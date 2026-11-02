@@ -4,6 +4,9 @@ from db.session import getDB
 from sqlalchemy.orm import Session
 from models.users import Users
 from services.hash_passwd import HashService
+from datetime import datetime,timedelta,timezone
+from jose import jwt
+from db.base import setting
 
 router=APIRouter(prefix='/users')
 hash_service=HashService()
@@ -23,14 +26,25 @@ def register(user:UserCreate,db:Session=Depends(getDB)):
         email=user.email,
         phone_no=user.phone_no,
         password=hash_passwd,
-        role=user.role
+        role="customer"
     )
+
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
 
+    expiry_time=datetime.now(timezone.utc)+timedelta(
+            minutes=30
+        )
+    access_token=jwt.encode({
+        "sub":str(new_user.id),
+        "exp":expiry_time
+    },
+    setting.SECRET_KEY,
+            algorithm="HS256")
     return {
-        "message":"Successfully Registered..."
+        "message":"Successfully Registered...",
+        "token":access_token
     }
 @router.post('/login')
 def login(user:UserLogin,db:Session=Depends(getDB)):
@@ -46,8 +60,22 @@ def login(user:UserLogin,db:Session=Depends(getDB)):
             status_code=401,
             detail="Invalid password "
         )
+    expiry_time=datetime.now(timezone.utc)+timedelta(
+        minutes=30
+    )
+    access_token=jwt.encode(
+        {
+            "sub":str(check_user.id),
+            "exp":expiry_time
+        },
+        setting.SECRET_KEY,
+        algorithm="HS256"
+        
+    )
     return {
-        "message":"Successfully logged in..."
+        "message":"Successfully logged in...",
+        "token":access_token,
+        "token_type": "bearer"
     }
 
 

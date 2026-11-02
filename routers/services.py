@@ -3,12 +3,14 @@ from schemas.services import ServiceCreate
 from sqlalchemy.orm import Session
 from db.session import getDB
 from models.services import ServiceTable
+from models.users import Users
+from auth import require_admin
 
 
 router=APIRouter(prefix="/services")
 
 @router.post('/')
-def add_service(service:ServiceCreate,db:Session=Depends(getDB)):
+def add_service(service:ServiceCreate,db:Session=Depends(getDB),admin:Users=Depends(require_admin)):
     existing_service=db.query(ServiceTable).filter(ServiceTable.service_name==service.service_name).first()
     if existing_service:
         raise HTTPException(
@@ -38,7 +40,7 @@ def get_services(db:Session=Depends(getDB)):
     return services
 
 @router.delete('/{service_id}')
-def delete_services(service_id:int,db:Session=Depends(getDB)):
+def delete_services(service_id:int,db:Session=Depends(getDB),admin:Users=Depends(require_admin)):
     service=db.query(ServiceTable).filter(ServiceTable.id==service_id).first()
 
     if not service:
